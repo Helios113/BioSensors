@@ -13,15 +13,18 @@ class PINN_node(nn.Module):
         self.z = None
         
         self.base = nn.Sequential(
-                nn.Linear(2, 20),
+                nn.Linear(6, 20),
                 nn.LeakyReLU()
             ) 
         
         self.column = nn.Sequential(
                 nn.Linear(50, 40),
-                nn.LeakyReLU(),
-                nn.Linear(40, 20),
-                nn.LeakyReLU(),
+                nn.ReLU(),
+                nn.Linear(40, 30),
+                nn.ReLU(),
+                nn.Linear(30, 20),
+                nn.Dropout(p = 0.3),
+                nn.ReLU(),
             ) 
         
         self.hidden = nn.Linear(20, 7)
@@ -43,7 +46,6 @@ class PINN_node(nn.Module):
         self.nextNN.append(next)
     
     def stage(self, x, i):
-        x = x.unsqueeze(1).float()
         q = torch.full(x.shape,i).float()
         p = torch.cat((x,q), dim=1)
         self.z = self.base(p)
@@ -81,11 +83,10 @@ class PINN(nn.Module):
             prev = a
         
     def forward(self, x):
-        for i,z in enumerate(x):
-            self.models[i].stage(z, i)
+        for i in range(x.shape[1]):
+            self.models[i].stage(x[:,i,:], i)
         sum = 0
-        for i,z in enumerate(x):
+        for i in range(x.shape[1]):
             sum = torch.add(sum, self.models[i]())
-            
-        return torch.div(sum, len(x))
+        return torch.div(sum, x.shape[1])
         
